@@ -1,0 +1,9 @@
+(library
+  (name stb_image)
+  (libraries ctypes.foreign)
+  (foreign_archives stb_image))
+
+(foreign_library
+  (archive_name stb_image)
+  (language c)
+  (names stb_image))
