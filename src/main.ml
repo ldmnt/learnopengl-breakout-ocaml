@@ -10,7 +10,7 @@ let key_callback win key _ a _ =
   | _ -> ()
 
 let main () =
-   GLFW.init ();
+  GLFW.init ();
   GLFW.windowHint ~hint:ContextVersionMajor ~value:3;
   GLFW.windowHint ~hint:ContextVersionMinor ~value:3;
   GLFW.windowHint ~hint:OpenGLProfile ~value:GLFW.CoreProfile;

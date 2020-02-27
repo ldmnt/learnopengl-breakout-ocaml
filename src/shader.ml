@@ -18,20 +18,20 @@ let string_of_typ = function
   | Geometry -> "GEOMETRY"
 
 let check_compile_file_errors id typ =
-  let success = Glutil.get_int (Gl.get_shaderiv id Gl.compile_status) = Gl.true_ in
+  let success = Util.get_int (Gl.get_shaderiv id Gl.compile_status) = Gl.true_ in
   if success then () else
-    let len = Glutil.get_int (Gl.get_shaderiv id Gl.info_log_length) in
-    let log = Glutil.get_string len (Gl.get_shader_info_log id len None) in
+    let len = Util.get_int (Gl.get_shaderiv id Gl.info_log_length) in
+    let log = Util.get_string len (Gl.get_shader_info_log id len None) in
     failwith (
       "| ERROR::SHADER: Compile-time error: Type: " ^ (string_of_typ typ) ^ "\n"
       ^ log ^ "\n -- ------------------------------------------ -- \n"
     )
 
 let check_compile_program_errors id =
-  let success = Glutil.get_int(Gl.get_programiv id Gl.link_status) = Gl.true_ in
+  let success = Util.get_int(Gl.get_programiv id Gl.link_status) = Gl.true_ in
   if success then () else
-    let len = Glutil.get_int (Gl.get_programiv id Gl.info_log_length) in
-    let log = Glutil.get_string len (Gl.get_program_info_log id len None) in
+    let len = Util.get_int (Gl.get_programiv id Gl.info_log_length) in
+    let log = Util.get_string len (Gl.get_program_info_log id len None) in
     failwith (
       "| ERROR::SHADER: Link-time error:\n"
       ^ log ^ "\n -- ------------------------------------------ -- \n"
@@ -66,15 +66,18 @@ let set_float s name v use_shader =
   if use_shader then use s else ();
   Gl.uniform1f (Gl.get_uniform_location s name) v
 
-let set_integer s name v use_shader =
-  if use_shader then use s else ();
-  Gl.uniform1i (Gl.get_uniform_location s name) v
-
 let set_vector2f s name x y use_shader =
   if use_shader then use s else ();
   Gl.uniform2f (Gl.get_uniform_location s name) x y
-
-let set_vector3f s name x y z use_shader =
-  if use_shader then use s else ();
-  Gl.uniform3f (Gl.get_uniform_location s name) x y z
 *)
+let set_integer s name ?(use_shader=false) v =
+  if use_shader then use s else ();
+  Gl.uniform1i (Gl.get_uniform_location s name) v
+    
+let set_vector3f s name ?(use_shader=false) v =
+  if use_shader then use s else ();
+  Gl.uniform3f (Gl.get_uniform_location s name) v.(0) v.(1) v.(2)
+
+let set_matrix4 s name ?(use_shader=false) mat =
+  if use_shader then use s else ();
+  Gl.uniform_matrix4fv (Gl.get_uniform_location s name) 1 true (Util.Mat.to_bigarray mat)
