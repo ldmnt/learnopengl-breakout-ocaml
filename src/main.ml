@@ -7,8 +7,10 @@ let screen_height = 600
 let key_callback win key _ a _ =
   match (key, a) with
   | (GLFW.Escape, GLFW.Press) -> GLFW.setWindowShouldClose ~window:win ~b:true
+  | (k, GLFW.Press) -> Game.update_key k true
+  | (k, GLFW.Release) -> Game.update_key k false
   | _ -> ()
-
+      
 let main () =
   GLFW.init ();
   GLFW.windowHint ~hint:ContextVersionMajor ~value:3;
@@ -30,27 +32,31 @@ let main () =
     match GLFW.windowShouldClose ~window with
     | true -> ()
     | false ->
-      match g with
-      | Game.Active s ->
-        let current_frame = GLFW.getTime () in
-        let dt = Float.(current_frame - s.last_frame) in
-        GLFW.pollEvents ();
+      let current_frame = GLFW.getTime () in
+      let g = match g.Game.mode with
+        | Game.Active ->
+          GLFW.pollEvents ();
+          let dt = Float.(current_frame - g.Game.state.last_frame) in
+          let g =
+            g
+            |> Game.process_input ~dt
+            |> Game.update ~dt in
 
-        let g =
+          Gl.clear_color 0. 0. 0. 1.;
+          Gl.clear Gl.color_buffer_bit;
+          Game.render g;
+
+          GLFW.swapBuffers ~window;
           g
-          |> Game.process_input ~dt
-          |> Game.update ~dt in
+          
+        | Game.Menu -> g
+        | Game.Win -> g
+      in
+      main_loop Game.{ g with state = { g.state with last_frame = current_frame } }
+  in
 
-        Gl.clear_color 0. 0. 0. 1.;
-        Gl.clear Gl.color_buffer_bit;
-        Game.render g;
-
-        GLFW.swapBuffers ~window;
-        main_loop g
-      | Game.Menu -> main_loop g
-      | Game.Win -> main_loop g in
-
-  main_loop (Game.init ());
+  let (width, height) = Float.(of_int screen_width, of_int screen_height) in
+  main_loop (Game.init width height);
   GLFW.terminate ()
 
 let () = main ()

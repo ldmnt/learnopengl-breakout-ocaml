@@ -87,3 +87,10 @@ module Mat = struct
     done;
     result
 end
+
+module Vec2 = struct
+  type t = {
+    x : float
+  ; y : float
+  }
+end

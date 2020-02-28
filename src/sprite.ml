@@ -2,6 +2,7 @@ open Base
 open Tgl3
 
 module Mat = Util.Mat
+module Vec = Util.Vec2
 
 let vao_ = ref 0
 let shader_ = ref None
@@ -34,18 +35,24 @@ let init s =
   shader_ := Some s;
   vao_ := vao
 
-let draw txt position size rotate color =
+let draw txt pos
+    ?(color = [|1.;1.;1.|])
+    ?(rotate = 0.)
+    size =
   let shader = Option.value_exn !shader_ in
   Shader.use shader;
 
+  let radians = Float.(2. * pi * rotate / 360.) in
+
   let model =
     let open Mat in
+    let open Vec in
     identity ()
-    ** (translation [| position.(0); position.(1); 0. |])
-    ** (translation Float.([| 0.5 * size.(0); 0.5 * size.(1); 0.|]))
-    ** (rotation_around_z rotate)
-    ** (translation Float.([| -0.5 * size.(0); -0.5 * size.(1); 0. |]))
-    ** (scaling size.(0) size.(1)) in
+    ** (translation [| pos.x; pos.y; 0. |])
+    ** (translation Float.([| 0.5 * size.x; 0.5 * size.y; 0.|]))
+    ** (rotation_around_z radians)
+    ** (translation Float.([| -0.5 * size.x; -0.5 * size.y; 0. |]))
+    ** (scaling size.x size.y) in
   
   Shader.set_matrix4 shader "model" model;
   Shader.set_vector3f shader "spriteColor" color;
