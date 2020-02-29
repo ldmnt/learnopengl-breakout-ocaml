@@ -1,6 +1,9 @@
 open Base
 open Tgl3
 
+type direction = Up | Right | Down | Left
+
+
 (* Arrays that can be used to exchange data with GL context *)
 let bigarray_create k len = Bigarray.(Array1.create k c_layout len)
 
@@ -99,5 +102,38 @@ module Vec2 = struct
   let add { x = x1; y = y1 } { x = x2; y = y2 } =
     { x = x1 +. x2; y = y1 +. y2 }
 
+  let ( + ) = add
+
   let mul a {x; y} = { x = a *. x; y = a *. y }
+
+  let ( $* ) = mul
+
+  let ( - ) u v = u + (-. 1. $* v)
+
+  let clamp v low high =
+    let clamp_float a low high = Float.max low (Float.min high a) in
+    { x = clamp_float v.x low.x high.x; y = clamp_float v.y low.y high.y }
+
+  let squared_norm { x; y } = x *. x +. y *. y
+
+  let dot { x = x1; y = y1 } { x = x2; y = y2 } = x1 *. x2 +. y1 *. y2
+
+  let length v = Float.sqrt (squared_norm v)
+
+  let normalize v = (1. /. length v) $* v
+
+  let direction target =
+    let compass = [
+      ( Up, { x = 0.; y = 1. } );
+      ( Right, { x = 1.; y = 0. } );
+      ( Down, { x = 0.; y = -. 1. } );
+      ( Left, { x = -. 1.; y = 0. } );
+    ] in
+    let (_, best_dir) =
+      List.fold_left compass ~init:(0., Up) ~f:
+        begin fun (maxi, best_dir) (dir, v) ->
+          let dotp = dot target v in
+          if Float.(dotp > maxi) then (dotp, dir) else (maxi, best_dir)
+        end in
+    best_dir
 end

@@ -24,3 +24,12 @@ let make ~pos ~size ~sprite
 
 let draw t =
   Sprite.draw t.sprite t.pos t.size ~rotate:t.rotation ~color:t.color
+
+let check_collision a b = (* AABB - AABB collision *)
+  let open Float in
+  (* collision on x-axis ? *)
+  let collision_x = a.pos.x +. a.size.x >= b.pos.x && b.pos.x +. b.size.x >= a.pos.x in
+  (* collision on y-axis ? *)
+  let collision_y = a.pos.y +. a.size.y >= b.pos.y && b.pos.y +. b.size.y >= a.pos.y in
+  (* collision only if on both axes *)
+  collision_x && collision_y

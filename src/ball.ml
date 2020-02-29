@@ -46,3 +46,17 @@ let reset t pos velocity =
 let stick_to_player t ~player =
   let pos = V.(Game_object.(add player.pos { x = player.size.x /. 2. -. t.radius; y = -. t.radius *. 2. })) in
   { t with obj = { t.obj with pos; velocity = V.zero } }
+
+
+let check_collision ball (block : Game_object.t) = (* AABB - Circle collision *)
+  let center = V.{ x = ball.obj.pos.x +. ball.radius; y = ball.obj.pos.y +. ball.radius } in
+  let aabb_half_extents = V.((1. /. 2.) $* block.size) in
+  let aabb_center = V.(block.pos + aabb_half_extents) in
+  let difference = V.(center - aabb_center) in
+  let clamped = V.(clamp difference (-.1. $* aabb_half_extents) aabb_half_extents) in
+  let closest = V.(aabb_center + clamped) in
+  let difference = V.(closest - center) in
+  if Float.(V.squared_norm difference < ball.radius *. ball.radius) then
+    (true, V.direction difference, difference)
+  else
+    (false, Up, V.zero)

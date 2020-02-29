@@ -3,6 +3,8 @@ open Base
 module RM = Resource_manager
 module V = Util.Vec2
 
+let abs_float = Caml.abs_float
+
 let player_size = V.{ x = 100.; y = 20.}
 let player_velocity = 500.
 let initial_ball_velocity = V.{ x = 100.; y = -. 350. }
@@ -35,6 +37,13 @@ let get_key k =
   Map.Poly.find !keys k
   |> Option.value ~default:false
 
+
+let initial_player_pos width height =
+  V.{
+    x = Float.(width / 2. - player_size.x / 2.);
+    y = Float.(height - player_size.y)
+  }
+
 let init width height =
   (* Load shaders *)
   RM.load_shader
@@ -57,13 +66,8 @@ let init width height =
   RM.load_texture ~file:"textures/paddle.png" ~alpha:true ~name:"paddle";
 
   (* Initialize paddle *)
-  let player_pos = V.{
-    x = Float.(width / 2. - player_size.x / 2.);
-    y = Float.(height - player_size.y)
-  } in
-  
   let player = Game_object.make
-      ~pos:player_pos
+      ~pos:(initial_player_pos width height)
       ~size:player_size
       ~sprite:(RM.get_texture "paddle")
       ~is_solid:true
@@ -94,10 +98,98 @@ let init width height =
   { mode = Active; state = state0; levels; width; height }
 
 
+let reset_level levels i =
+  let Game_level.{ bricks } = levels.(i) in
+  let bricks = List.map bricks ~f:(fun b -> { b with destroyed = false }) in
+  levels.(i) <- { bricks }
+
+
+let reset_player g =
+  let player = { g.state.player with pos = initial_player_pos g.width g.height } in
+  let ball =
+    Ball.reset g.state.ball V.zero V.zero
+    |> Ball.stick_to_player ~player in
+  { g with state = { g.state with player; ball } }
+
+
+let resolve_collision (ball : Ball.t) (brick : Game_object.t) direction (diff_vector : V.t) =
+  (* Destroy brick if not solid *)
+  let destroyed = if not brick.is_solid then true else brick.destroyed in
+
+  let V.{ x = px; y = py }, V.{ x = vx; y = vy } = ball.obj.pos, ball.obj.velocity in
+  let px, py, vx, vy =
+    match direction with
+    | Util.Left | Util.Right ->
+      let penetration = ball.radius -. abs_float diff_vector.x in
+      let px = match direction with
+        | Util.Left -> px +. penetration
+        | Util.Right -> px -. penetration
+        | _ -> assert false in
+      px, py, -. vx, vy
+
+    | Util.Up | Util.Down ->
+      let penetration = ball.radius -. abs_float diff_vector.y in
+      let py = match direction with
+        | Util.Up -> py -. penetration
+        | Util.Down -> py +. penetration
+        | _ -> assert false in
+      px, py, vx, -. vy
+  in
+
+  let pos, velocity = V.{ x = px; y = py }, V.{ x = vx; y = vy } in
+  let ball = { ball with obj = { ball.obj with pos; velocity } } in
+  let brick = { brick with destroyed } in
+  (ball, brick)
+
+
+let do_collisions g =
+  let state, level = g.state, g.levels.(g.state.level) in
+
+  (* Resolve collision between ball and blocks *)
+  let resolve_one (ball : Ball.t) (brick : Game_object.t) =
+    if not brick.destroyed then
+      let (collide, direction, diff_vector) = Ball.check_collision ball brick in
+      if collide then
+        resolve_collision ball brick direction diff_vector
+      else (ball, brick)
+    else
+      (ball, brick) in
+  let (ball, bricks) = List.fold_map level.bricks ~init:state.ball ~f:resolve_one in
+  g.levels.(g.state.level) <- { bricks };
+ 
+  (* Resolve collision between ball and player *)
+  let player = state.player in
+  let (collide, direction, diff_vector) = Ball.check_collision ball player in
+  let ball =
+    if not ball.stuck && collide then
+      let board_center = player.pos.x +. player.size.x /. 2. in
+      let distance = ball.obj.pos.x +. ball.radius -. board_center in
+      let percentage = distance /. (player.size.x /. 2.) in
+      let strength = 2. in
+      let old_velocity = ball.obj.velocity in
+      let velocity = V.{
+        x = initial_ball_velocity.x *. percentage *. strength;
+        y = -. abs_float old_velocity.y
+      } in
+      let velocity = V.( (length old_velocity) $* (normalize velocity) ) in
+      { ball with obj = { ball.obj with velocity } }
+    else ball
+  in
+  
+  { g with state = { g.state with ball } }
+
+
 let update g ~dt =
+  (* Update objects *)
   let ball = Ball.move g.state.ball dt g.width in
   let state = { g.state with ball } in
-  { g with state }
+  let g = do_collisions { g with state } in
+
+  (* Check if ball reached the bottom *)
+  if Float.(g.state.ball.obj.pos.y >= g.height) then begin
+    reset_level g.levels g.state.level;
+    reset_player g
+  end else g
 
 
 let process_input g ~dt =

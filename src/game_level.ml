@@ -77,8 +77,7 @@ let load level_width level_height file =
 let draw t =
   let maybe_draw b =
     if not b.Game_object.destroyed then
-      Game_object.draw b
-    else () in
+      Game_object.draw b in
   List.iter t.bricks ~f:maybe_draw
 
 
