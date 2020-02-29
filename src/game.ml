@@ -5,11 +5,14 @@ module V = Util.Vec2
 
 let player_size = V.{ x = 100.; y = 20.}
 let player_velocity = 500.
+let initial_ball_velocity = V.{ x = 100.; y = -. 350. }
+let ball_radius = 12.5
 
 type state = {
   last_frame : float
 ; level : int
 ; player : Game_object.t
+; ball : Ball.t
 }
 
 type mode = Active | Menu | Win
@@ -66,11 +69,18 @@ let init width height =
       ~is_solid:true
       () in
 
+  (* Initialize ball *)
+  let ball =
+    Ball.make ~pos:V.zero ~radius:ball_radius ~velocity:initial_ball_velocity
+      ~sprite:(RM.get_texture "face") ()
+    |> Ball.stick_to_player ~player in
+               
   (* Initial state *)
   let state0 = {
     level = 0;
     last_frame = GLFW.getTime ();
-    player
+    player;
+    ball
   } in
 
   (* Load levels *)
@@ -84,7 +94,10 @@ let init width height =
   { mode = Active; state = state0; levels; width; height }
 
 
-let update g ~dt = ignore dt; g
+let update g ~dt =
+  let ball = Ball.move g.state.ball dt g.width in
+  let state = { g.state with ball } in
+  { g with state }
 
 
 let process_input g ~dt =
@@ -100,10 +113,19 @@ let process_input g ~dt =
         x +. velocity
       | _, _, x -> x in
     let player = { player with pos = { player.pos with x = new_x } } in
+
+    (* Update ball position *)
+    let ball = g.state.ball in
+    let ball = if ball.stuck then Ball.stick_to_player ~player ball else ball in
+    let ball =
+      if get_key GLFW.Space then
+        let obj = { ball.obj with velocity = initial_ball_velocity } in
+        { ball with stuck = false; obj}
+      else ball in
     
-    { g with state = { g.state with player } }
+    { g with state = { g.state with player; ball } }
     
-  | _ -> g
+  | Menu | Win -> g
 
 
 let render g =
@@ -120,5 +142,9 @@ let render g =
     Game_level.draw g.levels.(current_level);
 
     (* Draw player *)
-    Game_object.draw g.state.player
+    Game_object.draw g.state.player;
+
+    (* Draw ball *)
+    Game_object.draw g.state.ball.obj
+      
   | _ -> ()

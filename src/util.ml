@@ -93,4 +93,11 @@ module Vec2 = struct
     x : float
   ; y : float
   }
+
+  let zero = { x = 0.; y = 0. }
+  
+  let add { x = x1; y = y1 } { x = x2; y = y2 } =
+    { x = x1 +. x2; y = y1 +. y2 }
+
+  let mul a {x; y} = { x = a *. x; y = a *. y }
 end

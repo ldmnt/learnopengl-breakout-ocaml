@@ -18,7 +18,7 @@ let make ~pos ~size ~sprite
     ?(velocity = V.{x=0.; y=0.})
     ?(rotation = 0.)
     ?(destroyed = false)
-    ~is_solid
+    ?(is_solid = true)
     () =
   { pos; size; velocity; sprite; rotation; is_solid; destroyed; color}
 
