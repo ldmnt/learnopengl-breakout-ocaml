@@ -4,15 +4,25 @@ type t = {
   obj : Game_object.t
 ; radius : float
 ; stuck : bool
+; sticky : bool
+; pass_through : bool
 }
 
-let make ~pos ?(radius=12.5) ?velocity ~sprite () =
+let make
+    ~pos
+    ?(radius=12.5)
+    ?(sticky=false)
+    ?(pass_through=false)
+    ?velocity
+    ~sprite () =
   {
     obj =
       Game_object.make ~pos ~sprite ?velocity
         ~size:V.{ x = radius *. 2.; y = radius *. 2. } ()
   ; radius
   ; stuck = true
+  ; sticky
+  ; pass_through
   }
 
 let move t dt window_width =

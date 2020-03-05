@@ -53,9 +53,7 @@ let make shader width height =
   Gl.framebuffer_renderbuffer Gl.framebuffer Gl.color_attachment0 Gl.renderbuffer rbo;
   if Gl.check_framebuffer_status Gl.framebuffer <> Gl.framebuffer_complete then
     failwith "ERROR::POSTPROCESSOR: Failed to initialize MSFBO\n";
-  let max_samples = Util.get_int (Gl.get_integerv Gl.max_samples) in
-  Stdio.printf "max samples : %d\n" max_samples;
-
+   
   (* Also initialize the fbo/texture to blit multisampled color-buffer to; used for shader operations (for postprocessing effects) *)
   Gl.bind_framebuffer Gl.framebuffer fbo;
   let texture = Texture.generate ~width ~height (`Offset 0) in
