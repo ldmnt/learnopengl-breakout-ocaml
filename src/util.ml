@@ -9,6 +9,8 @@ let bigarray_create k len = Bigarray.(Array1.create k c_layout len)
 
 let float_bigarray a = Bigarray.(Array1.of_array float32 c_layout a)
 
+let int_bigarray a = Bigarray.(Array1.of_array int32 c_layout a)
+
 (* Helpers to retrieve values from GL calls *)
 let get_int f =
   let a = bigarray_create Bigarray.int32 1 in

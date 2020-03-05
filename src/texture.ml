@@ -14,7 +14,7 @@ let generate
     data =
   let id = Util.get_int (Gl.gen_textures 1) in
   Gl.bind_texture Gl.texture_2d id;
-  Gl.tex_image2d Gl.texture_2d 0 internal_format width height 0 image_format Gl.unsigned_byte (`Data data);
+  Gl.tex_image2d Gl.texture_2d 0 internal_format width height 0 image_format Gl.unsigned_byte data;
   Gl.tex_parameteri Gl.texture_2d Gl.texture_wrap_s wrap_s;
   Gl.tex_parameteri Gl.texture_2d Gl.texture_wrap_t wrap_t;
   Gl.tex_parameteri Gl.texture_2d Gl.texture_min_filter filter_min;
@@ -25,3 +25,5 @@ let generate
 let bind = Gl.bind_texture Gl.texture_2d
 
 let delete = Util.set_int (Gl.delete_textures 1)
+
+let id t = t

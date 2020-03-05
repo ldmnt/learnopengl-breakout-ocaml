@@ -17,8 +17,8 @@ let get_shader name = Map.find_exn !shaders name
 let load_texture ~file ~alpha ~name =
   let (data, width, height, _) = Stb_image.stbi_load file in
   let txt = if alpha
-    then Texture.generate data ~width ~height ~internal_format:Gl.rgba ~image_format:Gl.rgba
-    else Texture.generate data ~width ~height in
+    then Texture.generate (`Data data) ~width ~height ~internal_format:Gl.rgba ~image_format:Gl.rgba
+    else Texture.generate (`Data data) ~width ~height in
   Stb_image.stbi_image_free data;
   textures := Map.set !textures ~key:name ~data:txt
 

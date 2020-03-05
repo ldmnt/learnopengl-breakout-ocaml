@@ -15,6 +15,7 @@ type state = {
 ; level : int
 ; player : Game_object.t
 ; ball : Ball.t
+; shake_time : float
 }
 
 type mode = Active | Menu | Win
@@ -24,6 +25,7 @@ type t = {
 ; state : state
 ; levels : Game_level.t Array.t
 ; particle_generator : Particle_generator.t
+; effects : Postprocessor.t
 ; width : float
 ; height : float
 }
@@ -55,6 +57,10 @@ let init width height =
     ~vertex:"shaders/particle.vs"
     ~fragment:"shaders/particle.frag"
     "particle";
+  RM.load_shader
+    ~vertex:"shaders/post_processing.vs"
+    ~fragment:"shaders/post_processing.frag"
+    "postprocessing";
   
   (* Configure shaders *)
   let projection = Util.Mat.orthographic_projection 0. width height 0. (-.1.) 1. in
@@ -93,7 +99,8 @@ let init width height =
     level = 0;
     last_frame = GLFW.getTime ();
     player;
-    ball
+    ball;
+    shake_time = 0.
   } in
 
   (* Load levels *)
@@ -107,8 +114,12 @@ let init width height =
   (* Create particle generator *)
   let particle_generator =
     Particle_generator.make 500 (RM.get_texture "particle") (RM.get_shader "particle") in
+
+  (* Initialize postprocessor *)
+  let effects =
+    Postprocessor.make (RM.get_shader "postprocessing") (Int.of_float width) (Int.of_float height) in
   
-  { mode = Active; state = state0; levels; width; height; particle_generator }
+  { mode = Active; state = state0; levels; width; height; particle_generator; effects }
 
 
 let reset_level levels i =
@@ -125,7 +136,7 @@ let reset_player g =
   { g with state = { g.state with player; ball } }
 
 
-let resolve_collision (ball : Ball.t) (brick : Game_object.t) direction (diff_vector : V.t) =
+let resolve_collision (ball : Ball.t) (brick : Game_object.t) direction (diff_vector : V.t) =  
   (* Destroy brick if not solid *)
   let destroyed = if not brick.is_solid then true else brick.destroyed in
 
@@ -159,17 +170,23 @@ let do_collisions g =
   let state, level = g.state, g.levels.(g.state.level) in
 
   (* Resolve collision between ball and blocks *)
+  let must_shake = ref false in
   let resolve_one (ball : Ball.t) (brick : Game_object.t) =
     if not brick.destroyed then
       let (collide, direction, diff_vector) = Ball.check_collision ball brick in
-      if collide then
+      if collide then begin
+        if brick.is_solid then must_shake := true; (* If brick is solid, shake effect must be enabled *)
         resolve_collision ball brick direction diff_vector
-      else (ball, brick)
+      end else
+        (ball, brick)
     else
       (ball, brick) in
   let (ball, bricks) = List.fold_map level.bricks ~init:state.ball ~f:resolve_one in
   g.levels.(g.state.level) <- { bricks };
- 
+  let shake_time, effects = (* Enable shake effect if necessary *)
+    if !must_shake then 0.05, { g.effects with shake = true }
+    else g.state.shake_time, g.effects in
+
   (* Resolve collision between ball and player *)
   let player = state.player in
   let (collide, direction, diff_vector) = Ball.check_collision ball player in
@@ -189,7 +206,7 @@ let do_collisions g =
     else ball
   in
   
-  { g with state = { g.state with ball } }
+  { g with state = { g.state with ball; shake_time }; effects }
 
 
 let update g ~dt =
@@ -209,6 +226,15 @@ let update g ~dt =
   let ball = g.state.ball in
   let offset = V.{ x = ball.radius /. 2.; y = ball.radius /. 2. } in
   Particle_generator.update g.particle_generator dt ball.Ball.obj 2 offset;
+
+  (* Stop shaking if shake timer is done *)
+  let shake_time, effects = match g.state.shake_time with
+    | t when Float.(t > 0.) ->
+      let t = t -. dt in
+      let effects = if Float.(t <= 0.) then { g.effects with shake = false } else g.effects in
+      t, effects
+    | t -> t, g.effects in
+  let g = { g with effects; state = { g.state with shake_time } } in
 
   g
     
@@ -245,6 +271,8 @@ let process_input g ~dt =
 let render g =
   match g.mode with
   | Active ->
+    Postprocessor.begin_render g.effects;
+    
     (* Draw background *)
     Sprite.draw
       (RM.get_texture "background")
@@ -262,6 +290,9 @@ let render g =
     Particle_generator.draw g.particle_generator;
     
     (* Draw ball *)
-    Game_object.draw g.state.ball.obj
+    Game_object.draw g.state.ball.obj;
+
+    Postprocessor.end_render g.effects;
+    Postprocessor.render g.effects (GLFW.getTime ())
       
   | _ -> ()

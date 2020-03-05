@@ -8,6 +8,7 @@ val generate :
   ?wrap_t:Tgl3.Gl.enum ->
   ?filter_min:Tgl3.Gl.enum ->
   ?filter_max:Tgl3.Gl.enum ->
-  ('a, 'b) Tgl3.Gl.bigarray -> t
+  [ `Data of ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t | `Offset of int ] -> t
 val bind : t -> unit
 val delete : t -> unit
+val id : t -> int
