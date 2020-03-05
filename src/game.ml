@@ -23,6 +23,7 @@ type t = {
   mode : mode
 ; state : state
 ; levels : Game_level.t Array.t
+; particle_generator : Particle_generator.t
 ; width : float
 ; height : float
 }
@@ -50,6 +51,10 @@ let init width height =
     ~vertex:"shaders/sprite.vs"
     ~fragment:"shaders/sprite.frag"
     "sprite";
+  RM.load_shader
+    ~vertex:"shaders/particle.vs"
+    ~fragment:"shaders/particle.frag"
+    "particle";
   
   (* Configure shaders *)
   let projection = Util.Mat.orthographic_projection 0. width height 0. (-.1.) 1. in
@@ -57,6 +62,9 @@ let init width height =
   Shader.set_integer s "image" 0 ~use_shader:true;
   Shader.set_matrix4 s "projection" projection;
   Sprite.init s;
+  let s = RM.get_shader "particle" in
+  Shader.set_integer s "sprite" 0 ~use_shader:true;
+  Shader.set_matrix4 s "projection" projection;
 
   (* Load textures *)
   RM.load_texture ~file:"textures/background.jpg" ~alpha:false ~name:"background";
@@ -64,6 +72,7 @@ let init width height =
   RM.load_texture ~file:"textures/block.png" ~alpha:false ~name:"block";
   RM.load_texture ~file:"textures/block_solid.png" ~alpha:false ~name:"block_solid";
   RM.load_texture ~file:"textures/paddle.png" ~alpha:true ~name:"paddle";
+  RM.load_texture ~file:"textures/particle.png" ~alpha:true ~name:"particle";
 
   (* Initialize paddle *)
   let player = Game_object.make
@@ -94,8 +103,12 @@ let init width height =
     Game_level.load width (height *. 0.5) "levels/three.lvl";
     Game_level.load width (height *. 0.5) "levels/four.lvl";
   |] in
+
+  (* Create particle generator *)
+  let particle_generator =
+    Particle_generator.make 500 (RM.get_texture "particle") (RM.get_shader "particle") in
   
-  { mode = Active; state = state0; levels; width; height }
+  { mode = Active; state = state0; levels; width; height; particle_generator }
 
 
 let reset_level levels i =
@@ -186,10 +199,19 @@ let update g ~dt =
   let g = do_collisions { g with state } in
 
   (* Check if ball reached the bottom *)
-  if Float.(g.state.ball.obj.pos.y >= g.height) then begin
-    reset_level g.levels g.state.level;
-    reset_player g
-  end else g
+  let g =
+    if Float.(g.state.ball.obj.pos.y >= g.height) then begin
+      reset_level g.levels g.state.level;
+      reset_player g
+    end else g in
+
+  (* Update particles *)
+  let ball = g.state.ball in
+  let offset = V.{ x = ball.radius /. 2.; y = ball.radius /. 2. } in
+  Particle_generator.update g.particle_generator dt ball.Ball.obj 2 offset;
+
+  g
+    
 
 
 let process_input g ~dt =
@@ -236,6 +258,9 @@ let render g =
     (* Draw player *)
     Game_object.draw g.state.player;
 
+    (* Draw particles *)
+    Particle_generator.draw g.particle_generator;
+    
     (* Draw ball *)
     Game_object.draw g.state.ball.obj
       

@@ -65,19 +65,24 @@ let delete = Gl.delete_program
 let set_float s name v use_shader =
   if use_shader then use s else ();
   Gl.uniform1f (Gl.get_uniform_location s name) v
-
-let set_vector2f s name x y use_shader =
-  if use_shader then use s else ();
-  Gl.uniform2f (Gl.get_uniform_location s name) x y
 *)
-let set_integer s name ?(use_shader=false) v =
-  if use_shader then use s else ();
-  Gl.uniform1i (Gl.get_uniform_location s name) v
-    
+
+let set_vector2f s name ?(use_shader=false) v =
+  if use_shader then use s;
+  Gl.uniform2f (Gl.get_uniform_location s name) v.(0) v.(1)
+
 let set_vector3f s name ?(use_shader=false) v =
-  if use_shader then use s else ();
+  if use_shader then use s;
   Gl.uniform3f (Gl.get_uniform_location s name) v.(0) v.(1) v.(2)
 
+let set_vector4f s name ?(use_shader=false) v =
+  if use_shader then use s;
+  Gl.uniform4f (Gl.get_uniform_location s name) v.(0) v.(1) v.(2) v.(3)
+
+let set_integer s name ?(use_shader=false) v =
+  if use_shader then use s;
+  Gl.uniform1i (Gl.get_uniform_location s name) v
+
 let set_matrix4 s name ?(use_shader=false) mat =
-  if use_shader then use s else ();
+  if use_shader then use s;
   Gl.uniform_matrix4fv (Gl.get_uniform_location s name) 1 true (Util.Mat.to_bigarray mat)

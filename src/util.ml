@@ -136,4 +136,6 @@ module Vec2 = struct
           if Float.(dotp > maxi) then (dotp, dir) else (maxi, best_dir)
         end in
     best_dir
+
+  let to_array { x; y } = [| x; y |]
 end
