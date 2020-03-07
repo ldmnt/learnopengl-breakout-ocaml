@@ -5,6 +5,6 @@
     tgls.tgl3
     base
     stdio
-    glfw-ocaml)
+    tsdl)
   (flags -cclib -Wl,--whole-archive lib/libstb_image.a -cclib -Wl,--no-whole-archive))
   

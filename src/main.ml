@@ -1,41 +1,66 @@
 open Base
 open Tgl3
+open Tsdl
 
 let screen_width = 800
 let screen_height = 600
 
-let key_callback win key _ a _ =
-  match (key, a) with
-  | (GLFW.Escape, GLFW.Press) -> GLFW.setWindowShouldClose ~window:win ~b:true
-  | (k, GLFW.Press) -> Game.update_key k true
-  | (k, GLFW.Release) -> Game.update_key k false
-  | _ -> ()
+
+(* SDL equivalent of GLFW's key callback and windowShouldClose *)
+let rec process_events e =
+  if Sdl.poll_event (Some e) then
+    let open Sdl.Event in
+    let action = enum (get e typ) in
+    match action with
+    | `Quit -> `Quit
+    | `Key_down | `Key_up ->
+      let key = get e keyboard_scancode in
+      if key = Sdl.Scancode.escape then `Quit
+      else
+        let new_state = match action with
+          | `Key_down -> true
+          | `Key_up -> false
+          | _ -> assert false in
+        Game.update_key key new_state;
+        process_events e
+    | _ -> process_events e
+  else
+    `Continue
       
 let main () =
-  GLFW.init ();
-  GLFW.windowHint ~hint:ContextVersionMajor ~value:3;
-  GLFW.windowHint ~hint:ContextVersionMinor ~value:3;
-  GLFW.windowHint ~hint:OpenGLProfile ~value:GLFW.CoreProfile;
-  GLFW.windowHint ~hint:Resizable ~value:false;
-
-  let window = GLFW.createWindow ~width:screen_width ~height:screen_height ~title:"Breakout" () in
-  GLFW.makeContextCurrent ~window:(Some window);
-
-  ignore (GLFW.setKeyCallback ~window ~f:(Some key_callback));
+  let window, context =
+    let maybe_error =
+      (* Initialize SDL window and GL context *)
+      let ( >>= ) = Result.(>>=) in
+      let set = Sdl.gl_set_attribute in
+      Sdl.init Sdl.Init.video >>= fun () ->
+      set Sdl.Gl.context_profile_mask Sdl.Gl.context_profile_core >>= fun () ->
+      set Sdl.Gl.context_major_version 3 >>= fun () ->
+      set Sdl.Gl.context_minor_version 3 >>= fun () ->
+      set Sdl.Gl.doublebuffer 1 >>= fun () ->
+      Sdl.create_window ~w:screen_width ~h:screen_height "Breakout" Sdl.Window.opengl >>= fun window ->
+      Sdl.gl_create_context window >>= fun context ->
+      Sdl.gl_make_current window context >>= fun () ->
+      Ok (window, context)
+    in
+    match maybe_error with
+    | Ok wc -> wc
+    | Error (`Msg s) -> failwith s
+  in
+  
+  let event = Sdl.Event.create () in
 
   Gl.viewport 0 0 screen_width screen_height;
   Gl.enable Gl.cull_face_enum;
   Gl.enable Gl.blend;
   Gl.blend_func Gl.src_alpha Gl.one_minus_src_alpha;
-  
+
   let rec main_loop g =
-    match GLFW.windowShouldClose ~window with
-    | true -> ()
-    | false ->
-      let current_frame = GLFW.getTime () in
+    match process_events event with
+    | `Continue ->
+      let current_frame = Game.get_time () in
       let g = match g.Game.mode with
         | Game.Active ->
-          GLFW.pollEvents ();
           let dt = Float.(current_frame - g.Game.state.last_frame) in
           let g =
             g
@@ -46,17 +71,22 @@ let main () =
           Gl.clear Gl.color_buffer_bit;
           Game.render g;
 
-          GLFW.swapBuffers ~window;
+          Sdl.gl_swap_window window;
           g
-          
+
         | Game.Menu -> g
         | Game.Win -> g
       in
       main_loop Game.{ g with state = { g.state with last_frame = current_frame } }
+
+    | `Quit -> ()
   in
 
   let (width, height) = Float.(of_int screen_width, of_int screen_height) in
   main_loop (Game.init width height);
-  GLFW.terminate ()
+
+  (* Cleanup *)
+  Sdl.gl_delete_context context;
+  Sdl.destroy_window window
 
 let () = main ()

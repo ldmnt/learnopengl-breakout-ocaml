@@ -1,4 +1,5 @@
 open Base
+open Tsdl
     
 module RM = Resource_manager
 module V = Util.Vec2
@@ -30,15 +31,17 @@ type t = {
 ; width : float
 ; height : float
 }
-    
 
-let keys : (GLFW.key, bool) Map.Poly.t ref = ref Map.Poly.empty
+(* Insteal of GLFWgetTime. Note that GLFW uses seconds and SDL milliseconds *)
+let get_time () = (Int32.to_float (Sdl.get_ticks ())) /. 1000.
+
+let keys = ref (Map.empty (module Int))
 
 let update_key k v =
-  keys := Map.Poly.set !keys ~key:k ~data:v
+  keys := Map.set !keys ~key:k ~data:v
 
 let get_key k =
-  Map.Poly.find !keys k
+  Map.find !keys k
   |> Option.value ~default:false
 
 
@@ -104,7 +107,7 @@ let init width height =
   (* Initial state *)
   let state0 = {
     level = 0;
-    last_frame = GLFW.getTime ();
+    last_frame = get_time ();
     player;
     ball;
     shake_time = 0.;
@@ -390,7 +393,7 @@ let process_input g ~dt =
     (* Update paddle position *)
     let player = g.state.player in
     let velocity = player_velocity *. dt in
-    let new_x = match get_key GLFW.A, get_key GLFW.D, player.pos.x with
+    let new_x = match get_key Sdl.Scancode.a, get_key Sdl.Scancode.d, player.pos.x with
       | true, false, x when Float.(x >= 0.) ->
         x -. velocity
       | false, true, x when Float.(x <= g.width -. player.size.x) ->
@@ -402,7 +405,7 @@ let process_input g ~dt =
     let ball = g.state.ball in
     let ball = if ball.stuck then Ball.stick_to_player ~player ball else ball in
     let ball =
-      if get_key GLFW.Space then
+      if get_key Sdl.Scancode.space then
         let obj = { ball.obj with velocity = initial_ball_velocity } in
         { ball with stuck = false; obj}
       else ball in
@@ -444,6 +447,6 @@ let render g =
     Game_object.draw g.state.ball.obj;
 
     Postprocessor.end_render g.effects;
-    Postprocessor.render g.effects (GLFW.getTime ())
+    Postprocessor.render g.effects (get_time ())
       
   | _ -> ()
