@@ -1,0 +1,19 @@
+(library (name stb_truetype)
+  (modules stb_truetype stb_truetype_generated)
+  (libraries ctypes stb_truetype_binding)
+  (wrapped false)
+  (foreign_stubs
+    (language c)
+    (names stb_truetype_stubs)))
+
+(rule (targets stb_truetype_stubs.c stb_truetype_generated.ml)
+  (deps (:gen gen_stb_truetype_stubs.exe))
+  (action (run %{gen})))
+
+(executable (name gen_stb_truetype_stubs)
+  (modules gen_stb_truetype_stubs)
+  (libraries ctypes.stubs stb_truetype_binding))
+
+(library (name stb_truetype_binding)
+  (modules stb_truetype_binding)
+  (libraries ctypes))

@@ -1,0 +1,28 @@
+(library (name sdl_mixer)
+  (modules
+    mixer_generated
+    sdl_mixer)
+  (libraries
+    ctypes
+    mixer_bindings)
+  (foreign_stubs
+    (language c)
+    (names
+      mixer_stubs))
+  (c_library_flags -lSDL2 -lSDL2_mixer))
+
+(rule (targets mixer_stubs.c mixer_generated.ml)
+  (deps
+    (:gen gen_mixer_stubs.exe))
+  (action
+    (run %{gen})))
+
+(executable (name gen_mixer_stubs)
+  (modules gen_mixer_stubs)
+  (libraries
+    ctypes.stubs
+    mixer_bindings))
+
+(library (name mixer_bindings)
+  (modules mixer_bindings)
+  (libraries ctypes))

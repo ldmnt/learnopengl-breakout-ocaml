@@ -18,6 +18,7 @@ type state = {
 ; ball : Ball.t
 ; shake_time : float
 ; powerups : Powerup.t list
+; lives : int
 }
 
 type mode = Active | Menu | Win
@@ -28,6 +29,7 @@ type t = {
 ; levels : Game_level.t Array.t
 ; particle_generator : Particle_generator.t
 ; effects : Postprocessor.t
+; text : Text_renderer.t
 ; width : float
 ; height : float
 }
@@ -35,14 +37,27 @@ type t = {
 (* Insteal of GLFWgetTime. Note that GLFW uses seconds and SDL milliseconds *)
 let get_time () = (Int32.to_float (Sdl.get_ticks ())) /. 1000.
 
-let keys = ref (Map.empty (module Int))
+(* Pairs (a, b) of boolean where a is true iff the key is pressed and
+   b is true iff the last key press was already processed *)
+let keys = ref (Map.empty (module Int)) 
 
 let update_key k v =
   keys := Map.set !keys ~key:k ~data:v
 
+let update_processed k =
+  match Map.find !keys k with
+  | Some (a, _) -> keys := Map.set !keys ~key:k ~data:(a, true)
+  | None -> ()
+
 let get_key k =
-  Map.find !keys k
-  |> Option.value ~default:false
+  match Map.find !keys k with
+  | Some (pressed, _) -> pressed
+  | None -> false
+
+let was_processed k =
+  match Map.find !keys k with
+  | Some (_, processed) -> processed
+  | None -> true
 
 
 let initial_player_pos width height =
@@ -90,6 +105,13 @@ let init width height =
   RM.load_texture ~file:"textures/powerup_chaos.png" ~alpha:true ~name:"powerup_chaos";
   RM.load_texture ~file:"textures/powerup_passthrough.png" ~alpha:true ~name:"powerup_passthrough";
 
+  (* Load sounds *)
+  RM.load_sound ~file:"audio/breakout.mp3" ~name:"background" `Music;
+  RM.load_sound ~file:"audio/bleep.mp3" ~name:"hit_nonsolid" `Chunk;
+  RM.load_sound ~file:"audio/solid.wav" ~name:"hit_solid" `Chunk;
+  RM.load_sound ~file:"audio/powerup.wav" ~name:"powerup" `Chunk;
+  RM.load_sound ~file:"audio/bleep.wav" ~name:"hit_player" `Chunk;
+
   (* Initialize paddle *)
   let player = Game_object.make
       ~pos:(initial_player_pos width height)
@@ -111,7 +133,8 @@ let init width height =
     player;
     ball;
     shake_time = 0.;
-    powerups = []
+    powerups = [];
+    lives = 3
   } in
 
   (* Load levels *)
@@ -129,14 +152,22 @@ let init width height =
   (* Initialize postprocessor *)
   let effects =
     Postprocessor.make (RM.get_shader "postprocessing") (Int.of_float width) (Int.of_float height) in
+
+  (* Text renderer *)
+  let text = Text_renderer.load width height "fonts/ocraext.ttf" 24 in
+
+  RM.play_sound "background";
   
-  { mode = Active; state = state0; levels; width; height; particle_generator; effects }
+  { mode = Menu; state = state0; levels; width; height; particle_generator; effects; text }
 
 
-let reset_level levels i =
+let reset_level g =
+  let levels = g.levels in
+  let i = g.state.level in
   let Game_level.{ bricks } = levels.(i) in
   let bricks = List.map bricks ~f:(fun b -> { b with destroyed = false }) in
-  levels.(i) <- { bricks }
+  levels.(i) <- { bricks };
+  { g with state = {g.state with lives = 3}; mode = Menu }
 
 
 let reset_player g =
@@ -287,8 +318,13 @@ let do_collisions g =
       if not brick.destroyed then
         let (collide, direction, diff_vector) = Ball.check_collision ball brick in
         if collide then begin
+          if brick.is_solid then
+             RM.play_sound "hit_solid" 
+          else
+             RM.play_sound "hit_nonsolid"; 
           let pus =
             if brick.is_solid then begin
+              
               must_shake := true; (* If brick is solid, shake effect must be enabled *)
               pus
             end else
@@ -310,6 +346,7 @@ let do_collisions g =
   let g = 
     let player, ball = g.state.player, g.state.ball in
     let (collide, direction, diff_vector) = Ball.check_collision ball player in
+    if collide then RM.play_sound "hit_player";
     let ball =
       if not ball.stuck && collide then
         let board_center = player.pos.x +. player.size.x /. 2. in
@@ -339,6 +376,7 @@ let do_collisions g =
               { pu with obj = { pu.obj with destroyed = true } }
             else pu in
           if Game_object.check_collision pu.obj !g.state.player then begin
+            RM.play_sound "powerup";
             g := activate_powerup !g pu;
             { pu with activated = true; obj = { pu.obj with destroyed = true } }
           end else pu
@@ -359,12 +397,14 @@ let update g ~dt =
 
   (* Check for collisions *)
   let g = do_collisions { g with state } in
-  
+
   (* Check if ball reached the bottom *)
   let g =
     if Float.(g.state.ball.obj.pos.y >= g.height) then begin
-      reset_level g.levels g.state.level;
-      reset_player g
+      let lives = g.state.lives - 1 in
+      let g = { g with state = { g.state with lives } } in
+      (if lives = 0 then reset_level g else g)
+      |> reset_player
     end else g in
 
   (* Update particles *)
@@ -380,10 +420,18 @@ let update g ~dt =
       t, effects
     | t -> t, g.effects in
   let g = { g with effects; state = { g.state with shake_time } } in
-  
+
   (* Update powerups *)
   let g = update_powerups g dt in
 
+  (* Check win condition *)
+  let g = match g.mode with
+    | Active ->
+      if (Game_level.is_completed g.levels.(g.state.level)) then
+        let g = g |> reset_level |> reset_player in
+        { g with effects = { g.effects with chaos = true }; mode = Win }
+      else g
+    | Menu | Win -> g in
   g
     
 
@@ -409,17 +457,38 @@ let process_input g ~dt =
         let obj = { ball.obj with velocity = initial_ball_velocity } in
         { ball with stuck = false; obj}
       else ball in
-    
+
     { g with state = { g.state with player; ball } }
+      
+  | Menu ->
+    let g =
+      if get_key Sdl.Scancode.return && not (was_processed Sdl.Scancode.return) then begin
+        update_processed Sdl.Scancode.return;
+        { g with mode = Active }
+      end else g in
+    let level = g.state.level in
+    let level = if get_key Sdl.Scancode.w && not (was_processed Sdl.Scancode.w) then begin
+        update_processed Sdl.Scancode.w;
+        (level + 1) % 4
+      end else level in
+    let level = if get_key Sdl.Scancode.s && not (was_processed Sdl.Scancode.s) then begin
+        update_processed Sdl.Scancode.s;
+        (level + 3) % 4
+      end else level in
+    { g with state = { g.state with level } }
+
+  | Win ->
+    if get_key Sdl.Scancode.return && not (was_processed Sdl.Scancode.return) then begin
+      update_processed Sdl.Scancode.return;
+      { g with mode = Menu; effects = { g.effects with chaos = false } }
+    end else g
     
-  | Menu | Win -> g
 
 
 let render g =
-  match g.mode with
-  | Active ->
+  let () =
     Postprocessor.begin_render g.effects;
-    
+
     (* Draw background *)
     Sprite.draw
       (RM.get_texture "background")
@@ -435,18 +504,36 @@ let render g =
 
     (* Draw powerups *)
     Powerup.(Game_object.(
-      g.state.powerups
-      |> List.filter ~f:(fun pu -> not pu.obj.destroyed)
-      |> List.iter ~f:(fun pu -> draw pu.obj)
-    ));
+        g.state.powerups
+        |> List.filter ~f:(fun pu -> not pu.obj.destroyed)
+        |> List.iter ~f:(fun pu -> draw pu.obj)
+      ));
 
     (* Draw particles *)
     Particle_generator.draw g.particle_generator;
-    
+
     (* Draw ball *)
     Game_object.draw g.state.ball.obj;
 
     Postprocessor.end_render g.effects;
-    Postprocessor.render g.effects (get_time ())
-      
-  | _ -> ()
+    Postprocessor.render g.effects (get_time ());
+
+    (* Write lives count *)
+    Text_renderer.render_text g.text (Printf.sprintf "Lives:%d" g.state.lives)
+      5. 5. 1.
+  in
+
+  match g.mode with
+  | Menu ->
+    Text_renderer.render_text g.text "Press ENTER to start"
+      250. (g.height /. 2.) 1.;
+    Text_renderer.render_text g.text "Press W or S to select level"
+      245. (g.height /. 2. +. 20.) 0.75
+
+  | Win ->
+    Text_renderer.render_text g.text "You WON!!!"
+      320. (g.height /. 2. -. 20.) 1. ~color:[|0.; 1.; 0.|];
+    Text_renderer.render_text g.text "Press ENTER to retry or ESC to quit"
+      130. (g.height /. 2.) 1. ~color:[|1.; 1.; 0.|]
+
+  | Active -> ()

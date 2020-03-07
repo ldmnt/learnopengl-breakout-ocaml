@@ -1,10 +1,12 @@
 (executable
   (name main)
   (libraries
-    stb_image
-    tgls.tgl3
     base
     stdio
-    tsdl)
+    tgls.tgl3
+    tsdl
+    sdl_mixer
+    stb_truetype
+    stb_image)
   (flags -cclib -Wl,--whole-archive lib/libstb_image.a -cclib -Wl,--no-whole-archive))
   
