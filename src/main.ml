@@ -60,7 +60,7 @@ let main () =
     match process_events event with
     | `Continue ->
       let current_frame = Game.get_time () in
-      let dt = Float.(current_frame - g.Game.state.last_frame) in
+      let dt = Float.(current_frame - g.Game.last_frame) in
       let g =
         g
         |> Game.process_input ~dt
@@ -71,7 +71,7 @@ let main () =
       Game.render g;
 
       Sdl.gl_swap_window window;
-      main_loop Game.{ g with state = { g.state with last_frame = current_frame } }
+      main_loop Game.{ g with last_frame = current_frame }
 
     | `Quit -> ()
   in
@@ -80,8 +80,9 @@ let main () =
   main_loop (Game.init width height);
 
   (* Cleanup *)
+  Resource_manager.clear ();
+  Sprite.shutdown ();
   Sdl.gl_delete_context context;
-  Sdl.destroy_window window;
-  Resource_manager.clear ()
+  Sdl.destroy_window window
 
 let () = main ()

@@ -67,15 +67,15 @@ let make shader width height =
   Shader.set_integer shader "scene" 0 ~use_shader:true;
   let offset = 1. /. 300. in
   let offsets = Util.float_bigarray [|
-      -. offset;    offset;
-      0.       ;    offset;
-      offset   ;    offset;
-      -. offset;        0.;
-      0.       ;        0.;
-      offset   ;        0.;
-      -. offset; -. offset;
-      0.       ; -. offset;
-      offset   ; -. offset
+      -. offset;    offset; (* top-left *)
+      0.       ;    offset; (* top-center *)
+      offset   ;    offset; (* top-right *)
+      -. offset;        0.; (* center-left *)
+      0.       ;        0.; (* center-center *)
+      offset   ;        0.; (* center-right *)
+      -. offset; -. offset; (* bottom-left *)
+      0.       ; -. offset; (* bottom-center *)
+      offset   ; -. offset  (* bottom-right *)
     |] in
   let sid = Shader.id shader in
   Gl.uniform2fv (Gl.get_uniform_location sid "offsets") 9 offsets;
@@ -106,7 +106,7 @@ let end_render t =
   Gl.bind_framebuffer Gl.read_framebuffer t.msfbo;
   Gl.bind_framebuffer Gl.draw_framebuffer t.fbo;
   Gl.blit_framebuffer 0 0 t.width t.height 0 0 t.width t.height Gl.color_buffer_bit Gl.nearest;
-  Gl.bind_framebuffer Gl.framebuffer 0
+  Gl.bind_framebuffer Gl.framebuffer 0 (* Binds both READ and WRITE framebuffer to default framebuffer *)
 
 
 let render t time =

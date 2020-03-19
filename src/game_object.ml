@@ -6,7 +6,7 @@ type t = {
   pos : V.t
 ; size : V.t
 ; velocity : V.t
-; color : float Array.t
+; color : float * float * float
 ; rotation : float
 ; sprite : Texture.t
 ; is_solid : bool
@@ -14,7 +14,7 @@ type t = {
 }
 
 let make ~pos ~size ~sprite
-    ?(color = [| 1.; 1.; 1. |])
+    ?(color = (1., 1., 1.))
     ?(velocity = V.{x=0.; y=0.})
     ?(rotation = 0.)
     ?(destroyed = false)

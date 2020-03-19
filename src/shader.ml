@@ -45,15 +45,20 @@ let compile_file source typ =
   id
 
 let compile ~vertex ~fragment ~geometry =
+  (* Vertex shader *)
   let vsid = compile_file vertex Vertex in
+  (* Fragment shader *)
   let fsid = compile_file fragment Fragment in
+  (* If geometry shader source code is given, also compile geometry shader *)
   let gsid = Option.map geometry ~f:(fun s -> compile_file s Geometry) in
+  (* Shader program *)
   let pid = Gl.create_program () in
   Gl.attach_shader pid vsid;
   Gl.attach_shader pid fsid;
   Option.map gsid ~f:(Gl.attach_shader pid) |> Caml.ignore;
   Gl.link_program pid;
   check_compile_program_errors pid;
+  (* Delete the shaders as they're linked into our program now and no longer necessary *)
   Gl.delete_shader vsid;
   Gl.delete_shader fsid;
   Option.map gsid ~f:Gl.delete_shader |> Caml.ignore;
@@ -61,17 +66,17 @@ let compile ~vertex ~fragment ~geometry =
 
 let delete = Gl.delete_program
 
-let set_vector2f s name ?(use_shader=false) v =
+let set_vector2f s name ?(use_shader=false) (x, y) =
   if use_shader then use s;
-  Gl.uniform2f (Gl.get_uniform_location s name) v.(0) v.(1)
+  Gl.uniform2f (Gl.get_uniform_location s name) x y
 
-let set_vector3f s name ?(use_shader=false) v =
+let set_vector3f s name ?(use_shader=false) (x, y, z) =
   if use_shader then use s;
-  Gl.uniform3f (Gl.get_uniform_location s name) v.(0) v.(1) v.(2)
+  Gl.uniform3f (Gl.get_uniform_location s name) x y z
 
-let set_vector4f s name ?(use_shader=false) v =
+let set_vector4f s name ?(use_shader=false) (x, y, z, w) =
   if use_shader then use s;
-  Gl.uniform4f (Gl.get_uniform_location s name) v.(0) v.(1) v.(2) v.(3)
+  Gl.uniform4f (Gl.get_uniform_location s name) x y z w
 
 let set_integer s name ?(use_shader=false) v =
   if use_shader then use s;

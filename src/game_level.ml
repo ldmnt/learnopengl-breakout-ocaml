@@ -4,27 +4,28 @@ open Stdio
 module RM = Resource_manager
 
 type t = {
-  bricks : Game_object.t List.t
+  bricks : Game_object.t list
 }
 
-
 let tile_color = function
-  | 1 -> [| 0.8; 0.8; 0.7 |]
-  | 2 -> [| 0.2; 0.6; 1.0 |]
-  | 3 -> [| 0.0; 0.7; 0.0 |]
-  | 4 -> [| 0.8; 0.8; 0.4 |]
-  | 5 -> [| 1.0; 0.5; 0.0 |]
-  | n -> failwith (Printf.sprintf "Invalid tile color identifier: %d" n)
+  | 1 -> (0.8, 0.8, 0.7)
+  | 2 -> (0.2, 0.6, 1.0)
+  | 3 -> (0.0, 0.7, 0.0)
+  | 4 -> (0.8, 0.8, 0.4)
+  | 5 -> (1.0, 0.5, 0.0)
+  | _ -> (1.0, 1.0, 1.0) (* default: white *)
 
 
 let init level_width level_height tile_data =
+  (* Calculate dimensions *)
   let height = List.length tile_data |> Float.of_int in
   if Float.(height > 0.) then
     let width = tile_data |> List.hd_exn |> List.length |> Float.of_int in
     let unit_width = level_width /. width in
     let unit_height = level_height /. height in
 
-    let make_block y x = function
+    (* Create block for (x, y) in level data depending on tile type *)
+    let make_block y x = function 
       | 0 -> None
       | 1 ->
         Some (
@@ -48,26 +49,28 @@ let init level_width level_height tile_data =
         )
     in
 
+    (* Iterate on tile data *)
     List.mapi tile_data ~f:begin
       fun y -> List.mapi ~f:(make_block y)
     end
     |> List.concat
-    |> List.filter_opt
+    |> List.filter_opt (* Filter out zeros (no block) *)
 
   else []
-       
+
 
 let load level_width level_height file =
   let parse_line l =
     l
-    |> String.rstrip
-    |> String.split ~on:(Char.of_string " ")
+    |> String.rstrip (* Remove trailing whitespace *)
+    |> String.split ~on:(Char.of_string " ") (* Read each word separated by spaces *)
     |> List.map ~f:Int.of_string
   in
 
   let bricks =
+    (* Load from file *)
     In_channel.read_all file
-    |> String.split_lines
+    |> String.split_lines (* Read each line from level file *)
     |> List.map ~f:parse_line
     |> init level_width level_height in
 

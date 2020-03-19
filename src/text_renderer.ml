@@ -19,7 +19,7 @@ type t = {
 ; vbo : int
 }
 
-let load width height font_file font_size =  
+let load ~width ~height ~file:font_file ~size:font_size =  
   (* Load and configure shader *)
   RM.load_shader ~vertex:"shaders/text.vs" ~fragment:"shaders/text.frag" "text";
   let shader = RM.get_shader "text" in
@@ -92,7 +92,8 @@ let load width height font_file font_size =
   
   { characters; shader; vao; vbo; space_advance }
 
-let render_text t text x y ?(color=[|1.; 1.; 1.|]) scaling =
+
+let render_text t ~x ~y ?(color=(1., 1., 1.)) ~scaling text =
   (* Activate corresponding render state *)
   Shader.use t.shader;
   Shader.set_vector3f t.shader "textColor" color;
@@ -137,7 +138,6 @@ let render_text t text x y ?(color=[|1.; 1.; 1.|]) scaling =
       (* Render quad *)
       Gl.draw_arrays Gl.triangles 0 6;
       (* Return advanced cursor for next glyph *)
-      (* let advance = Float.of_int (ch.advance asr 6) in (* Bitshift by 6 to get value in pixels (1/64th times 2^6 = 64) *) *)
       Float.(x + scaling * of_int ch.advance)
   in
   

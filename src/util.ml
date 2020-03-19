@@ -11,7 +11,7 @@ let float_bigarray a = Bigarray.(Array1.of_array float32 c_layout a)
 
 let int_bigarray a = Bigarray.(Array1.of_array int32 c_layout a)
 
-(* Helpers to retrieve values from GL calls *)
+(* Helpers to retrieve/pass values from/to GL calls *)
 let get_int f =
   let a = bigarray_create Bigarray.int32 1 in
   f a; Int32.to_int_exn a.{0}
@@ -47,12 +47,12 @@ module Mat = struct
       [| 0.; 0.; 0.; 1. |]
     |]
 
-  let translation vec =
+  let translation vx vy vz =
     [|
-      [| 1.; 0.; 0.; vec.(0) |];
-      [| 0.; 1.; 0.; vec.(1) |];
-      [| 0.; 0.; 1.; vec.(2) |];
-      [| 0.; 0.; 0.; 1.      |]
+      [| 1.; 0.; 0.; vx |];
+      [| 0.; 1.; 0.; vy |];
+      [| 0.; 0.; 1.; vz |];
+      [| 0.; 0.; 0.; 1. |]
     |]
 
   let rotation_around_z ~angle =
@@ -138,6 +138,4 @@ module Vec2 = struct
           if Float.(dotp > maxi) then (dotp, dir) else (maxi, best_dir)
         end in
     best_dir
-
-  let to_array { x; y } = [| x; y |]
 end
