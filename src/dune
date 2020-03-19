@@ -7,6 +7,5 @@
     tsdl
     sdl_mixer
     stb_truetype
-    stb_image)
-  (flags -cclib -Wl,--whole-archive lib/libstb_image.a -cclib -Wl,--no-whole-archive))
+    stb_image))
   

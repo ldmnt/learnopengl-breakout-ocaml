@@ -198,7 +198,7 @@ let spawn_powerups pus block =
     match should_spawn spawn_probability with
     | true -> Some (Powerup.make typ color duration block.Game_object.pos (RM.get_texture txt))
     | false -> None in
-  let maybe_pus = List.map spawn_data spawn_one in
+  let maybe_pus = List.map spawn_data ~f:spawn_one in
   pus @ List.filter_opt maybe_pus
 
 let activate_powerup g (pu : Powerup.t) =
@@ -345,7 +345,7 @@ let do_collisions g =
   (* Resolve collision between ball and player *)
   let g = 
     let player, ball = g.state.player, g.state.ball in
-    let (collide, direction, diff_vector) = Ball.check_collision ball player in
+    let (collide, _, _) = Ball.check_collision ball player in
     if collide then RM.play_sound "hit_player";
     let ball =
       if not ball.stuck && collide then

@@ -21,7 +21,7 @@ type t = {
 
 let load width height font_file font_size =  
   (* Load and configure shader *)
-  RM.load_shader "shaders/text.vs" "shaders/text.frag" "text";
+  RM.load_shader ~vertex:"shaders/text.vs" ~fragment:"shaders/text.frag" "text";
   let shader = RM.get_shader "text" in
   Shader.set_matrix4 shader "projection" ~use_shader:true
     (Util.Mat.orthographic_projection 0. width height 0. (-.1.) 1.);

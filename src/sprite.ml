@@ -50,7 +50,7 @@ let draw txt pos
     identity ()
     ** (translation [| pos.x; pos.y; 0. |])
     ** (translation Float.([| 0.5 * size.x; 0.5 * size.y; 0.|]))
-    ** (rotation_around_z radians)
+    ** (rotation_around_z ~angle:radians)
     ** (translation Float.([| -0.5 * size.x; -0.5 * size.y; 0. |]))
     ** (scaling size.x size.y) in
   

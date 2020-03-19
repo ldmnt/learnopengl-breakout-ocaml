@@ -1,0 +1,16 @@
+(library (name stb_image)
+  (modules stb_image stb_image_generated)
+  (libraries ctypes stb_image_binding)
+  (foreign_stubs (language c) (names stb_image_stubs)))
+
+(rule (targets stb_image_stubs.c stb_image_generated.ml)
+  (deps (:gen gen_stb_image_stubs.exe))
+  (action (run %{gen})))
+
+(executable (name gen_stb_image_stubs)
+  (modules gen_stb_image_stubs)
+  (libraries ctypes.stubs stb_image_binding))
+
+(library (name stb_image_binding)
+  (modules stb_image_binding)
+  (libraries ctypes))

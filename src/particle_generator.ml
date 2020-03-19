@@ -47,7 +47,7 @@ let make amount texture shader =
     (`Offset 0);
   Gl.bind_vertex_array 0;
 
-  { particles = Array.init amount (fun i -> make_particle ());
+  { particles = Array.init amount ~f:(fun _ -> make_particle ());
     last_used_particle = 0;
     vao; texture; shader }
 
@@ -58,7 +58,7 @@ let first_unused_particle t =
     | i when i < until ->
       if Float.(t.particles.(i).life <= 0.) then Some i else
         loop until (i + 1)
-    | i -> None in
+    | _ -> None in
   
   match loop (Array.length t.particles) t.last_used_particle with
   | Some i -> return i
@@ -106,4 +106,4 @@ let update t dt (obj : Game_object.t) n_new offset =
       p.pos <- V.(p.pos - (dt $* p.velocity));
       p.color.(3) <- p.color.(3) -. dt *. 2.5
     end in
-  Array.iter t.particles update_particle
+  Array.iter ~f:update_particle t.particles 
