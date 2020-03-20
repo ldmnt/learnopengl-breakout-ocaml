@@ -1,21 +1,32 @@
 (library (name sdl_mixer)
   (modules
     mixer_generated
+    mixer_consts_generated
     sdl_mixer)
   (libraries
     ctypes
     mixer_bindings)
   (foreign_stubs
     (language c)
-    (names
-      mixer_stubs))
-  (c_library_flags -lSDL2 -lSDL2_mixer))
+    (names mixer_stubs)
+    (flags -Wno-discarded-qualifiers))
+  (c_library_flags -lSDL2 -lSDL2_mixer)
+  (flags :standard -w -9-27))
 
-(rule (targets mixer_stubs.c mixer_generated.ml)
-  (deps
-    (:gen gen_mixer_stubs.exe))
+(rule (targets mixer_consts_generated.ml)
+  (deps gen_consts.exe)
   (action
-    (run %{gen})))
+    (with-stdout-to %{targets} (run %{deps} -ml))))
+
+(rule (targets gen_consts.exe)
+  (deps gen_consts.c)
+  (action
+    (bash
+      "%{cc} gen_consts.c -I `dirname %{lib:ctypes:ctypes_cstubs_internals.h}` -I %{ocaml_where} -o %{targets}")))
+
+(rule (targets mixer_stubs.c mixer_generated.ml gen_consts.c)
+  (deps (:gen gen_mixer_stubs.exe))
+  (action (run %{gen})))
 
 (executable (name gen_mixer_stubs)
   (modules gen_mixer_stubs)

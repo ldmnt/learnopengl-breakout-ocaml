@@ -554,6 +554,6 @@ let render g =
     Text_renderer.render_text g.text "You WON!!!"
       ~x:320. ~y:(g.height /. 2. -. 20.) ~scaling:1. ~color:(0., 1., 0.);
     Text_renderer.render_text g.text "Press ENTER to retry or ESC to quit"
-      ~x:130. ~y:(g.height /. 2.) ~scaling:1. ~color:(1., 0., 0.)
+      ~x:130. ~y:(g.height /. 2.) ~scaling:1. ~color:(1., 1., 0.)
 
   | Active -> ()

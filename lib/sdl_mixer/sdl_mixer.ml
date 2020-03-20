@@ -1,6 +1,17 @@
 module Mix = struct
   
 include Mixer_bindings.C (Mixer_generated)
+include Mixer_bindings.Consts (Mixer_consts_generated)
+
+module Init = struct
+  type t = int
+  let ( + ) = Int.logor
+  let ( = ) = Int.equal
+  let flac = mix_init_flac
+  let mod_ = mix_init_mod
+  let mp3 = mix_init_mp3
+  let ogg = mix_init_ogg
+end
 
 let error () = failwith (get_error ())
 

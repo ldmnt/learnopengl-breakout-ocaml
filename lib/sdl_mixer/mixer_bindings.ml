@@ -1,7 +1,15 @@
 open Ctypes
 open Cstubs
 
-module C (F : FOREIGN) = struct
+module Consts (T: TYPE) = struct
+open T
+let mix_init_flac = constant "MIX_INIT_FLAC" int
+let mix_init_mod = constant "MIX_INIT_MOD" int
+let mix_init_mp3 = constant "MIX_INIT_MP3" int
+let mix_init_ogg = constant "MIX_INIT_OGG" int
+end
+
+module C (F : FOREIGN)  = struct
 open F
       
 module Music : sig
@@ -22,16 +30,6 @@ end = struct
   type t = unit ptr
   let t = ptr void
   let is_null = is_null
-end
-
-module Init = struct
-  type t = int
-  let ( + ) = Int.logor
-  let ( = ) = Int.equal
-  let flac = 1
-  let mod_ = 2
-  let mp3 = 8
-  let ogg = 16
 end
 
 let get_error =

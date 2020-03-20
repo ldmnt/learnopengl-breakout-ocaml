@@ -7,8 +7,13 @@ open F
 type fontinfo = [`font_info] structure
 let fontinfo : fontinfo typ = structure "stbtt_fontinfo"
 
-let allocate_fontinfo () =
-  coerce (ptr char) (ptr fontinfo) (allocate_n ~count:160 char)
+(* fontinfo is an abstract stuct, but in order to use it, we need to know its size. 
+   This function retrieves the value dynamically. *)
+let fontinfo_size =
+  foreign "fontinfoSize" (void @-> returning int)
+
+let allocate_fontinfo ~size =
+  coerce (ptr char) (ptr fontinfo) (allocate_n ~count:size char)
 
 let get_number_of_fonts =
   foreign "stbtt_GetNumberOfFonts" (string @-> returning int)

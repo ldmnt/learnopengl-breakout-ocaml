@@ -2,7 +2,14 @@ open Ctypes
 
 module Stbtt = struct
 
-include Stb_truetype_binding.C (Stb_truetype_generated)  
+include Stb_truetype_binding.C (Stb_truetype_generated)
+
+type nonrec fontinfo = fontinfo ptr  
+
+let fontinfo_size = fontinfo_size ()
+
+let allocate_fontinfo () =
+  allocate_fontinfo ~size:fontinfo_size
 
 let init_font info data offset =
   match init_font info data offset with
